@@ -366,22 +366,33 @@ if (empty($onlyNumbers)) {
         'country' => $order->get_shipping_country(),
     ];
 
+    // Check for meaningful address data — ALL required fields must be present
+    $billing_has_address = !empty($billing_address_raw['address1']) && !empty($billing_address_raw['pincode']) && !empty($billing_address_raw['city']) && !empty($billing_address_raw['state']) && !empty($billing_address_raw['country']);
+    $shipping_has_address = !empty($shipping_address_raw['address1']) && !empty($shipping_address_raw['pincode']) && !empty($shipping_address_raw['city']) && !empty($shipping_address_raw['state']) && !empty($shipping_address_raw['country']);
+
     // Use whichever address is available
-    $billing_address = array_filter($billing_address_raw) ?: $shipping_address_raw;
-    $shipping_address = array_filter($shipping_address_raw) ?: $billing_address_raw;
+    $billing_address = $billing_has_address ? $billing_address_raw : ($shipping_has_address ? $shipping_address_raw : null);
+    $shipping_address = $shipping_has_address ? $shipping_address_raw : ($billing_has_address ? $billing_address_raw : null);
 
     $sanitize_address = function ($address) {
-        return [
-            'address1' => isset($address['address1']) ? substr($address['address1'], 0, 95) : '',
-            'pincode'  => $address['pincode'] ?? '',
-            'city'     => $address['city'] ?? '',
-            'state'    => $address['state'] ?? '',
-            'country'  => $address['country'] ?? '',
-        ];
+        $result = [];
+        if (!empty($address['address1'])) {
+            $result['address1'] = substr($address['address1'], 0, 95);
+        }
+        if (!empty($address['pincode'])) {
+            $result['pincode'] = $address['pincode'];
+        }
+        if (!empty($address['city'])) {
+            $result['city'] = $address['city'];
+        }
+        if (!empty($address['state'])) {
+            $result['state'] = $address['state'];
+        }
+        if (!empty($address['country'])) {
+            $result['country'] = $address['country'];
+        }
+        return $result;
     };
-
-    $billing_address = $sanitize_address($billing_address);
-    $shipping_address = $sanitize_address($shipping_address);
 
     $grand_total_paise = (int) round($order->get_total() * 100);
     $shipping_amount_paise = (int) round($order->get_shipping_total() * 100);
@@ -492,9 +503,9 @@ if (empty($onlyNumbers)) {
         'mobile_number' => $onlyNumbers,
     ];
 
-    if (!$all_virtual || !empty($billing_address['pincode'])) {
-        $customer['billing_address'] = $billing_address;
-        $customer['shipping_address'] = $shipping_address;
+    if (!$all_virtual && $billing_address !== null) {
+        $customer['billing_address'] = $sanitize_address($billing_address);
+        $customer['shipping_address'] = $sanitize_address($shipping_address ?? $billing_address);
     }
 
     $payload = [
