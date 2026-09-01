@@ -200,7 +200,7 @@ function pinepg_init_gateway_class() {
     public function send_pinepg_refund_request( $edge_order_id, $amount, $reason ) {
         $url = $this->environment === 'production'
             ? 'https://api.pluralpay.in/api/pay/v1/refunds/' . $edge_order_id
-            : 'https://pluraluat.v2.pinepg.in/api/pay/v1/refunds/' . $edge_order_id;
+            : 'https://ipg-apacuat.creditpluspinelabs.com/api/pay/v1/refunds/' . $edge_order_id;
     
         $body = wp_json_encode( array(
             'merchant_order_reference' => uniqid(),
@@ -313,7 +313,7 @@ function pinepg_init_gateway_class() {
 {
     $url = $this->environment === 'production'
         ? 'https://api.pluralpay.in/api/checkout/v1/orders'
-        : 'https://pluraluat.v2.pinepg.in/api/checkout/v1/orders';
+        : 'https://ipg-apacuat.creditpluspinelabs.com/api/checkout/v1/orders';
 
     $access_token = $this->get_access_token();
     if (!$access_token) {
@@ -674,7 +674,7 @@ if (empty($onlyNumbers)) {
         private function call_enquiry_api($order_id_from_pg) { 
             $url = $this->environment === 'production'
                 ? 'https://api.pluralpay.in/api/pay/v1/orders/' . $order_id_from_pg
-                : 'https://pluraluat.v2.pinepg.in/api/pay/v1/orders/' . $order_id_from_pg;
+                : 'https://ipg-apacuat.creditpluspinelabs.com/api/pay/v1/orders/' . $order_id_from_pg;
         
             $access_token = $this->get_access_token();
             error_log('Access Token: ' . $access_token);
@@ -712,7 +712,7 @@ if (empty($onlyNumbers)) {
                 
                 $url = $this->environment === 'production'
             ? 'https://api.pluralpay.in/api/auth/v1/token'
-            : 'https://pluraluat.v2.pinepg.in/api/auth/v1/token';
+            : 'https://ipg-apacuat.creditpluspinelabs.com/api/auth/v1/token';
 
                 // Prepare the request body
                 $body = wp_json_encode(array(
