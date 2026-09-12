@@ -41,7 +41,10 @@ function pinepg_init_gateway_class() {
             // Write to log file
             file_put_contents($log_file, $message, FILE_APPEND | LOCK_EX);
         }
-
+    private function get_pinepg_currency() {
+            $currency = function_exists('get_woocommerce_currency') ? get_woocommerce_currency() : '';
+            return strtoupper($currency ?: 'INR');
+        }
   private function is_part_payment_enabled() {
     return $this->get_option('enable_down_payment') === 'yes';
 }
@@ -206,7 +209,7 @@ function pinepg_init_gateway_class() {
             'merchant_order_reference' => uniqid(),
             'refund_amount' => array(
                 'value' => (int) $amount * 100, // Assuming WooCommerce amount is in decimal
-                'currency' => 'INR',
+                'currency' => $this->get_pinepg_currency(),
             ),
             'merchant_metadata' => array(
                 'key1' => 'DD',
@@ -332,22 +335,37 @@ $onlyNumbers = preg_replace('/\D/', '', $telephone);
 if (empty($onlyNumbers)) {
     $onlyNumbers = '9999999999';
 } else {
-    // Remove country codes for India
-    $countryCodes = ['91', '+91'];
-    foreach ($countryCodes as $code) {
-        $cleanCode = preg_replace('/\D/', '', $code);
-        if (strpos($onlyNumbers, $cleanCode) === 0) {
-            $onlyNumbers = substr($onlyNumbers, strlen($cleanCode));
-            break;
+     // Get the calling code for the order's billing country (dynamic — works for any country)
+    $billing_country = $order->get_billing_country();
+    $calling_code = '';
+    if (!empty($billing_country) && function_exists('WC') && WC()->countries) {
+        $calling_code = preg_replace('/\D/', '', WC()->countries->get_country_calling_code($billing_country));
+    }
+
+    // Detect international format: the number was written with a '+' prefix
+    // or an '00' international dialing prefix. This avoids false-positive
+    // country-code stripping on domestic numbers that happen to start with
+    $is_international = (strpos($telephone, '+') === 0) || (strpos($onlyNumbers, '00') === 0);
+
+    if ($is_international) {
+        // Strip the '00' international dialing prefix if present
+        if (strpos($onlyNumbers, '00') === 0) {
+            $onlyNumbers = substr($onlyNumbers, 2);
         }
+      // Strip the country code prefix dynamically (e.g. 91, 1, 44, 60, 65, 61, 971...)
+        if ($calling_code !== '' && strpos($onlyNumbers, $calling_code) === 0) {
+            $onlyNumbers = substr($onlyNumbers, strlen($calling_code));
+        }
+    } elseif (strlen($onlyNumbers) > 1 && $onlyNumbers[0] === '0') {
+        // Domestic format: strip the leading trunk-prefix '0' used in many
+        // countries (IN, GB, MY, IT, FR, DE, etc.) so Pine Labs gets the bare
+        // national number.
+        $onlyNumbers = substr($onlyNumbers, 1);
     }
-    
-    // Ensure we have exactly 10 digits
-    if (strlen($onlyNumbers) > 10) {
-        $onlyNumbers = substr($onlyNumbers, -10); // Take last 10 digits
-    } elseif (strlen($onlyNumbers) < 10) {
-        $onlyNumbers = '9999999999'; // Default if too short
-    }
+
+    // Keep the national number exactly as-is — different countries use
+    // different national-number lengths (IN/US/GB = 10, SG = 8, AU/UAE = 9,
+    // HK = 8, etc.), so we must NOT force 10 digits or pad/short numbers.
 }
 
     $billing_address_raw = [
@@ -445,7 +463,7 @@ if (empty($onlyNumbers)) {
                 'product_code' => $sku,
                 'product_amount' => [
                     'value' => $final_item_price_paise,
-                    'currency' => 'INR',
+                    'currency' => $this->get_pinepg_currency(),
                 ],
             ];
             $total_product_value += $final_item_price_paise;
@@ -458,7 +476,7 @@ if (empty($onlyNumbers)) {
             'product_code' => 'shipping_charge',
             'product_amount' => [
                 'value' => $shipping_amount_paise,
-                'currency' => 'INR',
+                'currency' => $this->get_pinepg_currency(),
             ],
         ];
         $total_product_value += $shipping_amount_paise;
@@ -471,7 +489,7 @@ if (empty($onlyNumbers)) {
             'product_code' => 'rounding_adjustment',
             'product_amount' => [
                 'value' => $rounding_adjustment,
-                'currency' => 'INR',
+                'currency' => $this->get_pinepg_currency(),
             ],
         ];
         $total_product_value += $rounding_adjustment;
@@ -512,7 +530,7 @@ if (empty($onlyNumbers)) {
         'merchant_order_reference' => $order->get_order_number() . '_' . gmdate("ymdHis"),
         'order_amount' => [
             'value' => $grand_total_paise,
-            'currency' => 'INR',
+            'currency' => $this->get_pinepg_currency(),
         ],
         'callback_url' => $callback_url,
         'pre_auth' => false,
@@ -682,6 +700,7 @@ if (empty($onlyNumbers)) {
             $response = wp_remote_get($url, array(
                 'headers' => array(
                     'Authorization' => 'Bearer ' . trim($access_token),
+					'Merchant-ID' => $this->merchant_id,
                     'Content-Type' => 'application/json',
                 )
             ));
