@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: wp-demo-ingress
+  namespace: plural-uat
+  annotations:
+    kubernetes.io/ingress.class: kong
+    konghq.com/strip-path: "false"
+spec:
+  rules:
+    - host: wp-demo-ipg-apacuat.creditpluspinelabs.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: wp-demo-svc
+                port:
+                  number: 80
