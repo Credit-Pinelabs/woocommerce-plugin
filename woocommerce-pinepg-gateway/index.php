@@ -21,6 +21,22 @@ function pinepg_add_gateway_class( $gateways ) {
 }
 
 add_action( 'plugins_loaded', 'pinepg_init_gateway_class' );
+
+// Register with WooCommerce Blocks checkout
+add_action( 'woocommerce_blocks_loaded', 'pinepg_register_blocks' );
+function pinepg_register_blocks() {
+    if ( ! class_exists( 'Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType' ) ) {
+        return;
+    }
+    require_once __DIR__ . '/blocks/WC_PinePg_Blocks.php';
+    add_action(
+        'woocommerce_blocks_payment_method_type_registration',
+        function( $registry ) {
+            $registry->register( new WC_PinePg_Blocks() );
+        }
+    );
+}
+
 function pinepg_init_gateway_class() {
 
 
@@ -49,6 +65,13 @@ function pinepg_init_gateway_class() {
     return $this->get_option('enable_down_payment') === 'yes';
 }
 
+
+        public $merchant_id;
+                public $cookie;
+                public $client_id;
+                public $client_secret;
+                public $environment;
+                public $msg = array();
 
         public function __construct() {
             $this->id = 'pinepg';
@@ -82,12 +105,12 @@ function pinepg_init_gateway_class() {
 			$this->msg['class'] = ""; 
 
             // Save settings
-            add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
+                        add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
 
-            // Callback for payment verification
-            add_action( 'woocommerce_api_wc_pinepg', array( $this, 'handle_pinepg_callback' ) );
-            add_action( 'woocommerce_api_wc_pinepg_webhook', array( $this, 'handle_pinepg_webhook' ) );
-        }
+                        // Callback for payment verification
+                        add_action( 'woocommerce_api_wc_pinepg', array( $this, 'handle_pinepg_callback' ) );
+                        add_action( 'woocommerce_api_wc_pinepg_webhook', array( $this, 'handle_pinepg_webhook' ) );
+                    }
 
         public function init_form_fields() {
     $this->form_fields = array(
@@ -202,7 +225,7 @@ function pinepg_init_gateway_class() {
     // Method to send the refund request to PinePG
     public function send_pinepg_refund_request( $edge_order_id, $amount, $reason ) {
         $url = $this->environment === 'production'
-            ? 'https://api.pluralpay.in/api/pay/v1/refunds/' . $edge_order_id
+            ? 'https://onlinepayments.pinelabs.sg/api/pay/v1/refunds/' . $edge_order_id
             : 'https://ipg-apacuat.creditpluspinelabs.com/api/pay/v1/refunds/' . $edge_order_id;
     
         $body = wp_json_encode( array(
@@ -295,8 +318,10 @@ function pinepg_init_gateway_class() {
         public function getCallbackUrl() {
             // Check if running on localhost
             if (strpos($_SERVER['HTTP_HOST'], 'localhost') !== false) {
-                // Local environment
-                return 'http://localhost/wordpress/wc-api/WC_PinePg';
+                // Determine the port if not standard 80
+                $port = $_SERVER['SERVER_PORT'] ?? '80';
+                $base = $port == '80' ? 'http://localhost' : 'http://localhost:' . $port;
+                return $base . '/wc-api/WC_PinePg';
             }
         
             // Production or staging environment
@@ -315,7 +340,7 @@ function pinepg_init_gateway_class() {
         public function send_pinepg_payment_request($order)
 {
     $url = $this->environment === 'production'
-        ? 'https://api.pluralpay.in/api/checkout/v1/orders'
+        ? 'https://onlinepayments.pinelabs.sg/api/checkout/v1/orders'
         : 'https://ipg-apacuat.creditpluspinelabs.com/api/checkout/v1/orders';
 
     $access_token = $this->get_access_token();
@@ -691,7 +716,7 @@ if (empty($onlyNumbers)) {
 
         private function call_enquiry_api($order_id_from_pg) { 
             $url = $this->environment === 'production'
-                ? 'https://api.pluralpay.in/api/pay/v1/orders/' . $order_id_from_pg
+                ? 'https://onlinepayments.pinelabs.sg/api/pay/v1/orders/' . $order_id_from_pg
                 : 'https://ipg-apacuat.creditpluspinelabs.com/api/pay/v1/orders/' . $order_id_from_pg;
         
             $access_token = $this->get_access_token();
@@ -730,7 +755,7 @@ if (empty($onlyNumbers)) {
             private function get_access_token() {
                 
                 $url = $this->environment === 'production'
-            ? 'https://api.pluralpay.in/api/auth/v1/token'
+            ? 'https://onlinepayments.pinelabs.sg/api/auth/v1/token'
             : 'https://ipg-apacuat.creditpluspinelabs.com/api/auth/v1/token';
 
                 // Prepare the request body
