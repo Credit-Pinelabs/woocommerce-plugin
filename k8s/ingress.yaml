@@ -6,7 +6,6 @@ metadata:
   annotations:
     kubernetes.io/ingress.class: kong
     konghq.com/strip-path: "false"
-    konghq.com/protocols: https
 spec:
   rules:
     - host: wp-demo-ipg-apacuat.creditpluspinelabs.com

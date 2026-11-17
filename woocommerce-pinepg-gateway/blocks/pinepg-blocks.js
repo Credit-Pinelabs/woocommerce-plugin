@@ -1,6 +1,3 @@
-/**
- * PinePG Payment Gateway - WooCommerce Blocks Integration
- */
 (function () {
     var el = window.wp.element.createElement;
     var registerPaymentMethod = window.wc.wcBlocksRegistry.registerPaymentMethod;
