@@ -5,7 +5,8 @@ RUN curl -sO https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cl
     && mv wp-cli.phar /usr/local/bin/wp
 
 # Pre-download WooCommerce into the image
-RUN curl -k -sS -L -o /tmp/woocommerce.zip https://downloads.wordpress.org/plugin/woocommerce.8.9.3.zip \
+RUN apt-get update && apt-get install -y unzip && rm -rf /var/lib/apt/lists/* \
+    && curl -k -sS -L -o /tmp/woocommerce.zip https://downloads.wordpress.org/plugin/woocommerce.8.9.3.zip \
     && unzip /tmp/woocommerce.zip -d /usr/src/plugins/ \
     && rm /tmp/woocommerce.zip
 
