@@ -17,12 +17,18 @@ if [ -d "/usr/src/plugins/woocommerce-pinepg-gateway" ] && [ ! -f "$PLUGIN_DIR/i
     chown -R www-data:www-data "$PLUGIN_DIR"
 fi
 
+# Also copy WooCommerce if not already installed
+WC_DIR="/var/www/html/wp-content/plugins/woocommerce"
+if [ -d "/usr/src/plugins/woocommerce" ] && [ ! -f "$WC_DIR/woocommerce.php" ]; then
+    mkdir -p "$WC_DIR"
+    cp -r /usr/src/plugins/woocommerce/* "$WC_DIR/"
+    chown -R www-data:www-data "$WC_DIR"
+fi
+
 if wp core is-installed --path=/var/www/html --allow-root 2>/dev/null; then
-    if ! wp plugin is-installed woocommerce --path=/var/www/html --allow-root 2>/dev/null; then
-        wp plugin install woocommerce --activate --path=/var/www/html --allow-root
-    else
-        wp plugin activate woocommerce --path=/var/www/html --allow-root 2>/dev/null || true
-    fi
+    # Activate WooCommerce first
+    wp plugin activate woocommerce --path=/var/www/html --allow-root 2>/dev/null || true
+    # Then activate PinePG
     wp plugin activate woocommerce-pinepg-gateway --path=/var/www/html --allow-root 2>/dev/null || true
 
     wp option set woocommerce_store_address "MG Road" --path=/var/www/html --allow-root

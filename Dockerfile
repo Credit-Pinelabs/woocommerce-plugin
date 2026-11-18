@@ -4,6 +4,11 @@ RUN curl -sO https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cl
     && chmod +x wp-cli.phar \
     && mv wp-cli.phar /usr/local/bin/wp
 
+# Pre-download WooCommerce into the image
+RUN curl -k -sS -L -o /tmp/woocommerce.zip https://downloads.wordpress.org/plugin/woocommerce.8.9.3.zip \
+    && unzip /tmp/woocommerce.zip -d /usr/src/plugins/ \
+    && rm /tmp/woocommerce.zip
+
 COPY woocommerce-pinepg-gateway/ /usr/src/plugins/woocommerce-pinepg-gateway/
 
 COPY entrypoint-setup.sh /usr/local/bin/entrypoint-setup.sh
